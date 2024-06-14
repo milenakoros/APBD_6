@@ -78,19 +78,19 @@ public class WarehouseRepository : IWarehouseRepository
         cmd.Parameters.AddWithValue("@IdProduct", request.IdProduct);
         cmd.Parameters.AddWithValue("@IdOrder", idOrder);
         cmd.Parameters.AddWithValue("@Amount", request.Amount);
-        cmd.Parameters.AddWithValue("@Price", await GetProductPriceAsync(request.IdProduct) * request.Amount);
+        cmd.Parameters.AddWithValue("@Price", (await GetProductPriceAsync(request.IdProduct) * (decimal)request.Amount));
         var result = (int)await cmd.ExecuteScalarAsync();
         return result;
     }
 
-    public async Task<double> GetProductPriceAsync(int idProduct)
+    public async Task<Decimal> GetProductPriceAsync(int idProduct)
     {
         using var con = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         await con.OpenAsync();
 
         using var cmd = new SqlCommand("SELECT Price FROM Product WHERE IdProduct = @IdProduct", con);
         cmd.Parameters.AddWithValue("@IdProduct", idProduct);
-        var price = (double)await cmd.ExecuteScalarAsync();
+        var price = (decimal)await cmd.ExecuteScalarAsync();
         return price;
     }
 }

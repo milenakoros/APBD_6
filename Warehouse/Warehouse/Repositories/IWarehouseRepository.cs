@@ -10,5 +10,5 @@ public interface IWarehouseRepository
     Task<bool> CheckIfOrderFulfilledAsync(int idOrder);
     Task UpdateOrderFulfilledAtAsync(SqlConnection con, SqlTransaction transaction, int idOrder);
     Task<int> InsertProductWarehouseAsync(SqlConnection con, SqlTransaction transaction, ProductWarehouseRequest request, int idOrder);
-    Task<double> GetProductPriceAsync(int idProduct);
+    Task<Decimal>  GetProductPriceAsync(int idProduct);
 }
