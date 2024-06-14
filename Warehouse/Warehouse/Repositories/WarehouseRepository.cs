@@ -4,7 +4,7 @@ namespace Warehouse.Controllers;
 
 public class WarehouseRepository : IWarehouseRepository
 {
-    private IConfiguration _configuration;
+    public IConfiguration _configuration { get; }
 
     public WarehouseRepository(IConfiguration configuration)
     {
@@ -34,13 +34,13 @@ public class WarehouseRepository : IWarehouseRepository
         return count > 0;
     }
 
-    public async Task<int?> GetMatchingOrderAsync(int idProduct, int amount, DateTime createdAt)
+    public async Task<int?> GetMatchingOrderAsync(int idProduct, double amount, DateTime createdAt)
     {
         using var con = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         await con.OpenAsync();
 
         using var cmd = new SqlCommand(
-            "SELECT IdOrder FROM Order WHERE IdProduct = @IdProduct AND Amount = @Amount AND CreatedAt < @CreatedAt AND FulfilledAt IS NULL",
+            "SELECT IdOrder FROM [Order] WHERE IdProduct = @IdProduct AND Amount = @Amount AND CreatedAt < @CreatedAt AND FulfilledAt IS NULL",
             con);
         cmd.Parameters.AddWithValue("@IdProduct", idProduct);
         cmd.Parameters.AddWithValue("@Amount", amount);
@@ -60,26 +60,20 @@ public class WarehouseRepository : IWarehouseRepository
         return count > 0;
     }
 
-    public async Task UpdateOrderFulfilledAtAsync(int idOrder)
+    public async Task UpdateOrderFulfilledAtAsync(SqlConnection con, SqlTransaction transaction, int idOrder)
     {
-        using var con = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-        await con.OpenAsync();
-
-        using var cmd = new SqlCommand("UPDATE Order SET FulfilledAt = GETDATE() WHERE IdOrder = @IdOrder", con);
+        using var cmd = new SqlCommand("UPDATE [Order] SET FulfilledAt = GETDATE() WHERE IdOrder = @IdOrder", con, transaction);
         cmd.Parameters.AddWithValue("@IdOrder", idOrder);
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public async Task<int> InsertProductWarehouseAsync(ProductWarehouseRequest request, int idOrder)
+    public async Task<int> InsertProductWarehouseAsync(SqlConnection con, SqlTransaction transaction, ProductWarehouseRequest request, int idOrder)
     {
-        using var con = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-        await con.OpenAsync();
-
         using var cmd = new SqlCommand(
             "INSERT INTO Product_Warehouse (IdWarehouse, IdProduct, IdOrder, Amount, Price, CreatedAt) " +
             "OUTPUT INSERTED.IdProductWarehouse " +
             "VALUES (@IdWarehouse, @IdProduct, @IdOrder, @Amount, @Price, GETDATE())",
-            con);
+            con, transaction);
         cmd.Parameters.AddWithValue("@IdWarehouse", request.IdWarehouse);
         cmd.Parameters.AddWithValue("@IdProduct", request.IdProduct);
         cmd.Parameters.AddWithValue("@IdOrder", idOrder);

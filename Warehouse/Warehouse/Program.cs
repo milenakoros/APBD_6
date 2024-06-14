@@ -1,19 +1,20 @@
+using Warehouse.Controllers;
+using Warehouse.Services;
+
 public class Program
 {
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
         
-        //Registering services
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.AddControllers();
-        //builder.Services.AddScoped<IStudentsRepository, StudentsRepository>();
-        //builder.Services.AddScoped<IStudentsService, StudentsService>();
+        builder.Services.AddScoped<IWarehouseRepository,WarehouseRepository>();
+        builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 
         var app = builder.Build();
 
-        //Configuring the HTTP request pipeline
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
