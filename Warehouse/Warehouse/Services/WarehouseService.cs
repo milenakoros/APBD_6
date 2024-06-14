@@ -51,6 +51,8 @@ public class WarehouseService : IWarehouseService
         }
 
         // Rozpoczynamy transakcję
+        //Nie do końca jestem pewna jak to rozdzielić, chciałam zrobić tak, aby logika biznesowa pozostała w servisie,
+        //a połączenia z bazą danych wyłącznie w repositories ale jak wtedy to połączyć z commitem i rollbackiem?
         using var con = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         await con.OpenAsync();
         using var transaction = con.BeginTransaction();
