@@ -16,58 +16,56 @@ public class WarehouseService : IWarehouseService
 
     public async Task<int> AddProductToWarehouseAsync(ProductWarehouseRequest request)
     {
-        if (request.Amount <= 0)
-        {
-            throw new ArgumentException("Amount should be greater than 0");
-        }
-
-
-        // Sprawdzamy, czy produkt istnieje
-        var productExists = await _repository.CheckIfProductExistsAsync(request.IdProduct);
-        if (!productExists)
-        {
-            throw new Exception("Product not found");
-        }
-
-        // Sprawdzamy, czy magazyn istnieje
-        var warehouseExists = await _repository.CheckIfWarehouseExistsAsync(request.IdWarehouse);
-        if (!warehouseExists)
-        {
-            throw new Exception("Warehouse not found");
-        }
-
-        // Sprawdzamy, czy istnieje odpowiednie zamówienie
-        var orderId = await _repository.GetMatchingOrderAsync(request.IdProduct, request.Amount, request.CreatedAt);
-        if (orderId == null)
-        {
-            throw new Exception("Matching order not found");
-        }
-
-        // Sprawdzamy, czy zamówienie zostało zrealizowane
-        var isOrderFulfilled = await _repository.CheckIfOrderFulfilledAsync(orderId.Value);
-        if (isOrderFulfilled)
-        {
-            throw new Exception("Order already fulfilled");
-        }
-
-        // Rozpoczynamy transakcję
-        //Nie do końca jestem pewna jak to rozdzielić, chciałam zrobić tak, aby logika biznesowa pozostała w servisie,
-        //a połączenia z bazą danych wyłącznie w repositories ale jak wtedy to połączyć z commitem i rollbackiem?
         using var con = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         await con.OpenAsync();
         using var transaction = con.BeginTransaction();
-
         try
         {
+            if (request.Amount <= 0)
+            {
+                throw new ArgumentException("Amount should be greater than 0");
+            }
+
+
+            // Sprawdzamy, czy produkt istnieje
+            var productExists = await _repository.CheckIfProductExistsAsync(con, transaction, request.IdProduct);
+            if (!productExists)
+            {
+                throw new Exception("Product not found");
+            }
+
+            // Sprawdzamy, czy magazyn istnieje
+            var warehouseExists = await _repository.CheckIfWarehouseExistsAsync(con, transaction,request.IdWarehouse);
+            if (!warehouseExists)
+            {
+                throw new Exception("Warehouse not found");
+            }
+
+            // Sprawdzamy, czy istnieje odpowiednie zamówienie
+            var orderId = await _repository.GetMatchingOrderAsync(con, transaction,request.IdProduct, request.Amount, request.CreatedAt);
+            if (orderId == null)
+            {
+                throw new Exception("Matching order not found");
+            }
+
+            // Sprawdzamy, czy zamówienie zostało zrealizowane
+            var isOrderFulfilled = await _repository.CheckIfOrderFulfilledAsync(con, transaction,orderId.Value);
+            if (isOrderFulfilled)
+            {
+                throw new Exception("Order already fulfilled");
+            }
+
             // Aktualizujemy kolumnę FullfilledAt
             await _repository.UpdateOrderFulfilledAtAsync(con, transaction, orderId.Value);
 
             // Wstawiamy rekord do Product_Warehouse
-            var productWarehouseId = await _repository.InsertProductWarehouseAsync(con, transaction, request, orderId.Value);
+            var productWarehouseId =
+                await _repository.InsertProductWarehouseAsync(con, transaction, request, orderId.Value);
 
             transaction.Commit();
 
             return productWarehouseId;
+
         }
         catch (Exception)
         {
